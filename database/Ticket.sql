@@ -1,108 +1,111 @@
--- CREATE DATABASE soporte_tickets;
--- USE soporte_tickets;
+-- Base de datos del sistema de soporte (Ticket.sql original del repositorio).
+-- Se descomentaron únicamente las sentencias SQL necesarias para crear la base, las tablas y los datos.
+-- Las líneas que siguen comentadas son descripciones y consultas opcionales del original.
+CREATE DATABASE soporte_tickets;
+USE soporte_tickets;
 
 -- -- 1. Tablas Maestras (Independientes)
--- CREATE TABLE cliente (
---     id_cliente INT AUTO_INCREMENT PRIMARY KEY,
---     nombre VARCHAR(100) NOT NULL,
---     empresa VARCHAR(100),
---     telefono VARCHAR(30),
---     rubro VARCHAR(100),
---     razon_social VARCHAR(150),
---     mail VARCHAR(150)
--- );
+CREATE TABLE cliente (
+    id_cliente INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    empresa VARCHAR(100),
+    telefono VARCHAR(30),
+    rubro VARCHAR(100),
+    razon_social VARCHAR(150),
+    mail VARCHAR(150)
+);
 
--- CREATE TABLE personal (
---     id_personal INT AUTO_INCREMENT PRIMARY KEY,
---     nombre VARCHAR(100) NOT NULL,
---     apellido VARCHAR(100) NOT NULL,
---     cargo VARCHAR(100)
--- );
+CREATE TABLE personal (
+    id_personal INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    cargo VARCHAR(100)
+);
 
--- CREATE TABLE estado (
---     id_estado INT AUTO_INCREMENT PRIMARY KEY,
---     descripcion VARCHAR(50) NOT NULL UNIQUE
--- );
+CREATE TABLE estado (
+    id_estado INT AUTO_INCREMENT PRIMARY KEY,
+    descripcion VARCHAR(50) NOT NULL UNIQUE
+);
 
 -- -- Insertamos los estados antes de que los tickets los necesiten
--- INSERT INTO estado (descripcion) VALUES
--- ('Pendiente'),
--- ('En proceso'),
--- ('Retrasado'),
--- ('Finalizado');
+INSERT INTO estado (descripcion) VALUES
+('Pendiente'),
+('En proceso'),
+('Retrasado'),
+('Finalizado');
 
 -- -- 2. Tabla Ticket (Depende de cliente, personal y estado)
--- CREATE TABLE ticket (
---     id_ticket INT AUTO_INCREMENT PRIMARY KEY,
---     fecha_inicio DATETIME NOT NULL,
---     fecha_entrega DATETIME,
---     prioridad ENUM('Baja','Media','Alta','Urgente') DEFAULT 'Media',
---     imagenes TEXT,
---     id_cliente INT NOT NULL,
---     id_personal INT,
---     id_estado INT NOT NULL,
---     FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente),
---     FOREIGN KEY (id_personal) REFERENCES personal(id_personal),
---     FOREIGN KEY (id_estado) REFERENCES estado(id_estado)
--- );
+CREATE TABLE ticket (
+    id_ticket INT AUTO_INCREMENT PRIMARY KEY,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_entrega DATETIME,
+    prioridad ENUM('Baja','Media','Alta','Urgente') DEFAULT 'Media',
+    imagenes TEXT,
+    id_cliente INT NOT NULL,
+    id_personal INT,
+    id_estado INT NOT NULL,
+    FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente),
+    FOREIGN KEY (id_personal) REFERENCES personal(id_personal),
+    FOREIGN KEY (id_estado) REFERENCES estado(id_estado)
+);
 
 -- -- 3. Tabla Mensaje (Depende de ticket y personal)
--- CREATE TABLE mensaje (
---     id_mensaje INT AUTO_INCREMENT PRIMARY KEY,
---     fecha_mensaje DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
---     descripcion TEXT NOT NULL,
---     id_ticket INT NOT NULL,
---     id_personal INT NOT NULL,
---     FOREIGN KEY (id_ticket) REFERENCES ticket(id_ticket) ON DELETE CASCADE,
---     FOREIGN KEY (id_personal) REFERENCES personal(id_personal)
--- );
+CREATE TABLE mensaje (
+    id_mensaje INT AUTO_INCREMENT PRIMARY KEY,
+    fecha_mensaje DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    descripcion TEXT NOT NULL,
+    id_ticket INT NOT NULL,
+    id_personal INT NOT NULL,
+    FOREIGN KEY (id_ticket) REFERENCES ticket(id_ticket) ON DELETE CASCADE,
+    FOREIGN KEY (id_personal) REFERENCES personal(id_personal)
+);
 
 -- -- 4. Índices (Opcionales para mejorar rendimiento)
--- CREATE INDEX idx_ticket_cliente ON ticket(id_cliente);
--- CREATE INDEX idx_ticket_estado ON ticket(id_estado);
--- CREATE INDEX idx_ticket_personal ON ticket(id_personal);
--- CREATE INDEX idx_mensaje_ticket ON mensaje(id_ticket);
--- USE soporte_tickets;
+CREATE INDEX idx_ticket_cliente ON ticket(id_cliente);
+CREATE INDEX idx_ticket_estado ON ticket(id_estado);
+CREATE INDEX idx_ticket_personal ON ticket(id_personal);
+CREATE INDEX idx_mensaje_ticket ON mensaje(id_ticket);
+USE soporte_tickets;
 
 -- 1. Insertar Personal / TÉCNICOS
--- INSERT INTO personal (nombre, apellido, cargo) VALUES
--- ('Carlos', 'Gómez', 'Técnico de Soporte L1'),
--- ('Ana', 'Martínez', 'Especialista en Infraestructura'),
--- ('Roberto', 'Fernández', 'Administrador de Sistemas'),
--- ('Lucía', 'Ríos', 'Soporte Técnico L2');
+INSERT INTO personal (nombre, apellido, cargo) VALUES
+('Carlos', 'Gómez', 'Técnico de Soporte L1'),
+('Ana', 'Martínez', 'Especialista en Infraestructura'),
+('Roberto', 'Fernández', 'Administrador de Sistemas'),
+('Lucía', 'Ríos', 'Soporte Técnico L2');
 
 -- 2. Insertar CLIENTES
--- INSERT INTO cliente (nombre, empresa, telefono, rubro, razon_social, mail) VALUES
--- ('Juan Pérez', 'Tech Solutions', '+54 362 4111222', 'Tecnología', 'Tech Solutions S.A.', 'jperez@techsolutions.com'),
--- ('María López', 'Panadería La Central', '+54 362 4333444', 'Gastronomía', 'María López E.I.R.L.', 'contacto@lacentral.com'),
--- ('Estudio Contable Silva', 'Silva & Asociados', '+54 362 4555666', 'Servicios Finacieros', 'Silva Consultores S.R.L.', 'admin@silvaconsultores.com'),
--- ('Gonzalo Benítez', 'Transportes El Rápido', '+54 362 4777888', 'Logística', 'El Rápido Transportes S.A.', 'gbenitez@elrapido.com');
+INSERT INTO cliente (nombre, empresa, telefono, rubro, razon_social, mail) VALUES
+('Juan Pérez', 'Tech Solutions', '+54 362 4111222', 'Tecnología', 'Tech Solutions S.A.', 'jperez@techsolutions.com'),
+('María López', 'Panadería La Central', '+54 362 4333444', 'Gastronomía', 'María López E.I.R.L.', 'contacto@lacentral.com'),
+('Estudio Contable Silva', 'Silva & Asociados', '+54 362 4555666', 'Servicios Finacieros', 'Silva Consultores S.R.L.', 'admin@silvaconsultores.com'),
+('Gonzalo Benítez', 'Transportes El Rápido', '+54 362 4777888', 'Logística', 'El Rápido Transportes S.A.', 'gbenitez@elrapido.com');
 
 -- 3. Insertar TICKETS
 -- Recordatorio de IDs de Estado: 1=Pendiente, 2=En proceso, 3=Retrasado, 4=Finalizado
--- INSERT INTO ticket (fecha_inicio, fecha_entrega, prioridad, imagenes, id_cliente, id_personal, id_estado) VALUES
+INSERT INTO ticket (fecha_inicio, fecha_entrega, prioridad, imagenes, id_cliente, id_personal, id_estado) VALUES
 -- Ticket 1: Finalizado
--- ('2026-08-01 09:00:00', '2026-08-01 11:30:00', 'Baja', 'http://img.local/t1_error.png', 1, 1, 4),
+('2026-08-01 09:00:00', '2026-08-01 11:30:00', 'Baja', 'http://img.local/t1_error.png', 1, 1, 4),
 -- Ticket 2: En proceso
--- ('2026-08-10 14:15:00', NULL, 'Alta', 'http://img.local/t2_servidor.jpg', 2, 2, 2),
+('2026-08-10 14:15:00', NULL, 'Alta', 'http://img.local/t2_servidor.jpg', 2, 2, 2),
 -- Ticket 3: Retrasado
--- ('2026-08-05 08:30:00', NULL, 'Urgente', NULL, 3, 3, 3),
+('2026-08-05 08:30:00', NULL, 'Urgente', NULL, 3, 3, 3),
 -- Ticket 4: Pendiente (Aún sin técnico asignado)
--- ('2026-08-15 09:00:00', NULL, 'Media', NULL, 4, NULL, 1);
+('2026-08-15 09:00:00', NULL, 'Media', NULL, 4, NULL, 1);
 
 -- 4. Insertar MENSAJES (Seguimiento e historial)
--- INSERT INTO mensaje (fecha_mensaje, descripcion, id_ticket, id_personal) VALUES
+INSERT INTO mensaje (fecha_mensaje, descripcion, id_ticket, id_personal) VALUES
 -- Seguimiento del Ticket 1
--- ('2026-08-01 09:15:00', 'Se toma contacto con el cliente para verificar fallo en impresora.', 1, 1),
--- ('2026-08-01 11:30:00', 'Se reinstalaron controladores. Equipo probado y funcionando.', 1, 1),
+('2026-08-01 09:15:00', 'Se toma contacto con el cliente para verificar fallo en impresora.', 1, 1),
+('2026-08-01 11:30:00', 'Se reinstalaron controladores. Equipo probado y funcionando.', 1, 1),
 
 -- Seguimiento del Ticket 2
--- ('2026-08-10 14:30:00', 'Revisando logs del servidor web que reporta caídas intermitentes.', 2, 2),
--- ('2026-08-10 16:00:00', 'Se detectó saturación en el disco principal. Limpiando archivos temporales.', 2, 2),
+('2026-08-10 14:30:00', 'Revisando logs del servidor web que reporta caídas intermitentes.', 2, 2),
+('2026-08-10 16:00:00', 'Se detectó saturación en el disco principal. Limpiando archivos temporales.', 2, 2),
 
 -- Seguimiento del Ticket 3
--- ('2026-08-05 09:00:00', 'Evaluando falla en el switch principal de la oficina.', 3, 3),
--- ('2026-08-07 10:00:00', 'Se requiere compra de repuesto. El ticket pasa a estado retrasado.', 3, 3);
+('2026-08-05 09:00:00', 'Evaluando falla en el switch principal de la oficina.', 3, 3),
+('2026-08-07 10:00:00', 'Se requiere compra de repuesto. El ticket pasa a estado retrasado.', 3, 3);
 SELECT 
     t.id_ticket,
     t.fecha_inicio,
