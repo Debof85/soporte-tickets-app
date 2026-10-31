@@ -295,7 +295,84 @@ app.get('/estados', async (req, res) => {
     res.status(500).json({ error: 'Error al listar estados', detalle: error.message });
   }
 });
+// ==========================================
+// 5. RECURSO: PROYECTOS
+// ==========================================
 
+// Listar todos los proyectos
+app.get('/proyectos', async (req, res) => {
+  try {
+    const sql = `
+      SELECT
+        p.id_proyecto,
+        p.nombre,
+        p.descripcion,
+        p.estado,
+        p.id_cliente,
+        c.nombre AS cliente,
+        c.empresa
+      FROM proyecto p
+      INNER JOIN cliente c
+        ON p.id_cliente = c.id_cliente
+      ORDER BY p.id_proyecto DESC
+    `;
+
+    const [rows] = await db.query(sql);
+
+    res.status(200).json(rows);
+
+  } catch (error) {
+    console.error('Error al listar proyectos:', error);
+
+    res.status(500).json({
+      error: 'Error al obtener proyectos'
+    });
+  }
+});
+// Obtener un proyecto por ID
+app.get('/proyectos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
+      return res.status(400).json({
+        error: 'El ID debe ser un número entero positivo'
+      });
+    }
+
+    const sql = `
+      SELECT
+        p.id_proyecto,
+        p.nombre,
+        p.descripcion,
+        p.estado,
+        p.id_cliente,
+        c.nombre AS cliente,
+        c.empresa
+      FROM proyecto p
+      INNER JOIN cliente c
+        ON p.id_cliente = c.id_cliente
+      WHERE p.id_proyecto = ?
+    `;
+
+    const [rows] = await db.query(sql, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: 'Proyecto no encontrado'
+      });
+    }
+
+    res.status(200).json(rows[0]);
+
+  } catch (error) {
+    console.error('Error al buscar proyecto:', error);
+
+    res.status(500).json({
+      error: 'Error al obtener el proyecto'
+    });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
