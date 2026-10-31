@@ -91,6 +91,9 @@ app.delete('/clientes/:id', async (req, res) => {
     }
     res.status(200).json({ mensaje: 'Cliente eliminado correctamente' });
   } catch (error) {
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(409).json({ error: 'No se puede eliminar: el cliente tiene proyectos o tickets asociados' });
+    }
     res.status(500).json({ error: 'Error al eliminar cliente', detalle: error.message });
   }
 });
@@ -295,84 +298,124 @@ app.get('/estados', async (req, res) => {
     res.status(500).json({ error: 'Error al listar estados', detalle: error.message });
   }
 });
+
 // ==========================================
-// 5. RECURSO: PROYECTOS
+// 5. RECURSO: PROYECTOS (Sprint 5)
 // ==========================================
+
+const ESTADOS_PROYECTO = ['Pendiente', 'En desarrollo', 'Finalizado'];
+
+// Verifica que el cliente exista. Devuelve true o false.
+async function existeCliente(id_cliente) {
+  const [rows] = await db.query('SELECT id_cliente FROM cliente WHERE id_cliente = ?', [id_cliente]);
+  return rows.length > 0;
+}
 
 // Listar todos los proyectos
 app.get('/proyectos', async (req, res) => {
   try {
-    const sql = `
-      SELECT
-        p.id_proyecto,
-        p.nombre,
-        p.descripcion,
-        p.estado,
-        p.id_cliente,
-        c.nombre AS cliente,
-        c.empresa
-      FROM proyecto p
-      INNER JOIN cliente c
-        ON p.id_cliente = c.id_cliente
-      ORDER BY p.id_proyecto DESC
-    `;
-
-    const [rows] = await db.query(sql);
-
+    const [rows] = await db.query('SELECT * FROM proyectos ORDER BY id_proyecto');
     res.status(200).json(rows);
-
   } catch (error) {
-    console.error('Error al listar proyectos:', error);
-
-    res.status(500).json({
-      error: 'Error al obtener proyectos'
-    });
+    res.status(500).json({ error: 'Error al obtener proyectos', detalle: error.message });
   }
 });
+
 // Obtener un proyecto por ID
 app.get('/proyectos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
-      return res.status(400).json({
-        error: 'El ID debe ser un número entero positivo'
-      });
-    }
-
-    const sql = `
-      SELECT
-        p.id_proyecto,
-        p.nombre,
-        p.descripcion,
-        p.estado,
-        p.id_cliente,
-        c.nombre AS cliente,
-        c.empresa
-      FROM proyecto p
-      INNER JOIN cliente c
-        ON p.id_cliente = c.id_cliente
-      WHERE p.id_proyecto = ?
-    `;
-
-    const [rows] = await db.query(sql, [id]);
-
+    const [rows] = await db.query('SELECT * FROM proyectos WHERE id_proyecto = ?', [id]);
     if (rows.length === 0) {
-      return res.status(404).json({
-        error: 'Proyecto no encontrado'
-      });
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
     }
-
     res.status(200).json(rows[0]);
-
   } catch (error) {
-    console.error('Error al buscar proyecto:', error);
-
-    res.status(500).json({
-      error: 'Error al obtener el proyecto'
-    });
+    res.status(500).json({ error: 'Error al buscar proyecto', detalle: error.message });
   }
 });
+
+// Registrar nuevo proyecto
+app.post('/proyectos', async (req, res) => {
+  try {
+    const { nombre, descripcion, estado, id_cliente } = req.body;
+    if (!nombre || !estado || !id_cliente) {
+      return res.status(400).json({ error: 'nombre, estado e id_cliente son obligatorios' });
+    }
+    if (!ESTADOS_PROYECTO.includes(estado)) {
+      return res.status(400).json({ error: `Estado inválido. Valores permitidos: ${ESTADOS_PROYECTO.join(', ')}` });
+    }
+    if (!(await existeCliente(id_cliente))) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    const sql = `
+      INSERT INTO proyectos (nombre, descripcion, estado, id_cliente)
+      VALUES (?, ?, ?, ?)
+    `;
+    const [result] = await db.query(sql, [nombre, descripcion || null, estado, id_cliente]);
+    res.status(201).json({ mensaje: 'Proyecto registrado', id_proyecto: result.insertId });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al registrar proyecto', detalle: error.message });
+  }
+});
+
+// Modificar un proyecto
+app.put('/proyectos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion, estado, id_cliente } = req.body;
+    if (!nombre || !estado || !id_cliente) {
+      return res.status(400).json({ error: 'nombre, estado e id_cliente son obligatorios' });
+    }
+    if (!ESTADOS_PROYECTO.includes(estado)) {
+      return res.status(400).json({ error: `Estado inválido. Valores permitidos: ${ESTADOS_PROYECTO.join(', ')}` });
+    }
+    if (!(await existeCliente(id_cliente))) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    const sql = `
+      UPDATE proyectos
+      SET nombre = ?, descripcion = ?, estado = ?, id_cliente = ?
+      WHERE id_proyecto = ?
+    `;
+    const [result] = await db.query(sql, [nombre, descripcion || null, estado, id_cliente, id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    res.status(200).json({ mensaje: 'Proyecto actualizado con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar proyecto', detalle: error.message });
+  }
+});
+
+// Eliminar un proyecto
+app.delete('/proyectos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.query('DELETE FROM proyectos WHERE id_proyecto = ?', [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    res.status(200).json({ mensaje: 'Proyecto eliminado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar proyecto', detalle: error.message });
+  }
+});
+
+// Consultar los proyectos de un cliente (relación Cliente → Proyectos)
+app.get('/clientes/:id/proyectos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!(await existeCliente(id))) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    const [rows] = await db.query('SELECT * FROM proyectos WHERE id_cliente = ? ORDER BY id_proyecto', [id]);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener proyectos del cliente', detalle: error.message });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
