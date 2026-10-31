@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 // Listar todos los clientes
 app.get('/clientes', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM cliente');
+    const [rows] = await db.query('SELECT * FROM cliente ORDER BY id_cliente');
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener clientes', detalle: error.message });
@@ -47,15 +47,19 @@ app.get('/clientes/:id', async (req, res) => {
 app.post('/clientes', async (req, res) => {
   try {
     const { nombre, empresa, telefono, rubro, razon_social, mail } = req.body;
-    if (!nombre) {
+    if (!nombre || !nombre.trim()) {
       return res.status(400).json({ error: 'El nombre es obligatorio' });
+    }
+    if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      return res.status(400).json({ error: 'El formato del email no es válido' });
     }
     const sql = `
       INSERT INTO cliente (nombre, empresa, telefono, rubro, razon_social, mail)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await db.query(sql, [nombre, empresa, telefono, rubro, razon_social, mail]);
-    res.status(201).json({ mensaje: 'Cliente registrado', id_cliente: result.insertId });
+    const [result] = await db.query(sql, [nombre.trim(), empresa || null, telefono || null, rubro || null, razon_social || null, mail || null]);
+    const [rows] = await db.query('SELECT * FROM cliente WHERE id_cliente = ?', [result.insertId]);
+    res.status(201).json({ mensaje: 'Cliente registrado', id_cliente: result.insertId, cliente: rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Error al registrar cliente', detalle: error.message });
   }
