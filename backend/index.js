@@ -416,6 +416,134 @@ app.get('/clientes/:id/proyectos', async (req, res) => {
   }
 });
 
+// ==========================================
+// 6. RECURSO: TAREAS (Sprint 6)
+// ==========================================
+
+const ESTADOS_TAREA = ['Pendiente', 'En desarrollo', 'Finalizada'];
+const PRIORIDADES_TAREA = ['Baja', 'Media', 'Alta'];
+
+// Verifica que el proyecto exista. Devuelve true o false.
+async function existeProyecto(id_proyecto) {
+  const [rows] = await db.query('SELECT id_proyecto FROM proyectos WHERE id_proyecto = ?', [id_proyecto]);
+  return rows.length > 0;
+}
+
+// Valida los campos de una tarea. Devuelve un mensaje de error o null si todo es válido.
+function validarTarea({ nombre, estado, prioridad, id_proyecto }) {
+  if (!nombre || !estado || !id_proyecto) {
+    return 'nombre, estado e id_proyecto son obligatorios';
+  }
+  if (!ESTADOS_TAREA.includes(estado)) {
+    return `Estado inválido. Valores permitidos: ${ESTADOS_TAREA.join(', ')}`;
+  }
+  if (prioridad && !PRIORIDADES_TAREA.includes(prioridad)) {
+    return `Prioridad inválida. Valores permitidos: ${PRIORIDADES_TAREA.join(', ')}`;
+  }
+  return null;
+}
+
+// Listar todas las tareas
+app.get('/tareas', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM tareas ORDER BY id_tarea');
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener tareas', detalle: error.message });
+  }
+});
+
+// Obtener una tarea por ID
+app.get('/tareas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await db.query('SELECT * FROM tareas WHERE id_tarea = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al buscar tarea', detalle: error.message });
+  }
+});
+
+// Registrar nueva tarea
+app.post('/tareas', async (req, res) => {
+  try {
+    const { nombre, estado, prioridad, id_proyecto } = req.body;
+    const error400 = validarTarea({ nombre, estado, prioridad, id_proyecto });
+    if (error400) {
+      return res.status(400).json({ error: error400 });
+    }
+    if (!(await existeProyecto(id_proyecto))) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    const sql = `
+      INSERT INTO tareas (nombre, estado, prioridad, id_proyecto)
+      VALUES (?, ?, ?, ?)
+    `;
+    const [result] = await db.query(sql, [nombre, estado, prioridad || 'Media', id_proyecto]);
+    res.status(201).json({ mensaje: 'Tarea registrada', id_tarea: result.insertId });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al registrar tarea', detalle: error.message });
+  }
+});
+
+// Modificar una tarea
+app.put('/tareas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, estado, prioridad, id_proyecto } = req.body;
+    const error400 = validarTarea({ nombre, estado, prioridad, id_proyecto });
+    if (error400) {
+      return res.status(400).json({ error: error400 });
+    }
+    if (!(await existeProyecto(id_proyecto))) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    const sql = `
+      UPDATE tareas
+      SET nombre = ?, estado = ?, prioridad = ?, id_proyecto = ?
+      WHERE id_tarea = ?
+    `;
+    const [result] = await db.query(sql, [nombre, estado, prioridad || 'Media', id_proyecto, id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.status(200).json({ mensaje: 'Tarea actualizada con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar tarea', detalle: error.message });
+  }
+});
+
+// Eliminar una tarea
+app.delete('/tareas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.query('DELETE FROM tareas WHERE id_tarea = ?', [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.status(200).json({ mensaje: 'Tarea eliminada correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar tarea', detalle: error.message });
+  }
+});
+
+// Consultar las tareas de un proyecto (relación Proyecto → Tareas)
+app.get('/proyectos/:id/tareas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!(await existeProyecto(id))) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    const [rows] = await db.query('SELECT * FROM tareas WHERE id_proyecto = ? ORDER BY id_tarea', [id]);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener tareas del proyecto', detalle: error.message });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
